@@ -1,0 +1,89 @@
+New https://pypi.org/project/ultralytics/8.4.64 available 😃 Update with 'pip install -U ultralytics'
+Ultralytics 8.4.60 🚀 Python-3.12.3 torch-2.12.0+cu130 CUDA:0 (NVIDIA GeForce RTX 5060 Laptop GPU, 7708MiB)
+[34m[1mengine/trainer: [0magnostic_nms=False, amp=True, angle=1.0, augment=False, auto_augment=randaugment, batch=4, bgr=0.0, box=7.5, cache=False, cfg=None, classes=None, close_mosaic=10, cls=0.5, cls_pw=0.0, compile=False, conf=None, copy_paste=0.0, copy_paste_mode=flip, cos_lr=True, cutmix=0.0, data=/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/data.yaml, degrees=15, deterministic=True, device=0, dfl=1.5, dnn=False, dropout=0.0, dynamic=False, embed=None, end2end=None, epochs=30, erasing=0.4, exist_ok=True, fliplr=0.5, flipud=0.0, format=torchscript, fraction=1.0, freeze=None, half=False, hsv_h=0.015, hsv_s=0.5, hsv_v=0.4, imgsz=640, int8=False, iou=0.7, keras=False, kobj=1.0, line_width=None, lr0=0.0001, lrf=0.01, mask_ratio=4, max_det=300, mixup=0.0, mode=train, model=yolo11m-seg.pt, momentum=0.9, mosaic=0.0, multi_scale=0.0, name=yolo11m_v2_20260611, nbs=64, nms=False, opset=None, optimize=False, optimizer=SGD, overlap_mask=True, patience=12, perspective=0.0, plots=True, pose=12.0, pretrained=True, profile=False, project=runs/seg_v2_20260611, rect=False, resume=False, retina_masks=False, rle=1.0, save=True, save_conf=False, save_crop=False, save_dir=/home/bf-robotics/jazzy0605/runs/segment/runs/seg_v2_20260611/yolo11m_v2_20260611, save_frames=False, save_json=False, save_period=-1, save_txt=False, scale=0.5, seed=0, shear=0.0, show=False, show_boxes=True, show_conf=True, show_labels=True, simplify=True, single_cls=False, source=None, split=val, stream_buffer=False, task=segment, time=None, tracker=botsort.yaml, translate=0.2, val=True, verbose=True, vid_stride=1, visualize=False, warmup_bias_lr=0.1, warmup_epochs=3.0, warmup_momentum=0.8, weight_decay=0.0005, workers=8, workspace=None
+Overriding model.yaml nc=80 with nc=1
+
+                   from  n    params  module                                       arguments                     
+  0                  -1  1      1856  ultralytics.nn.modules.conv.Conv             [3, 64, 3, 2]                 
+  1                  -1  1     73984  ultralytics.nn.modules.conv.Conv             [64, 128, 3, 2]               
+  2                  -1  1    111872  ultralytics.nn.modules.block.C3k2            [128, 256, 1, True, 0.25]     
+  3                  -1  1    590336  ultralytics.nn.modules.conv.Conv             [256, 256, 3, 2]              
+  4                  -1  1    444928  ultralytics.nn.modules.block.C3k2            [256, 512, 1, True, 0.25]     
+  5                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+  6                  -1  1   1380352  ultralytics.nn.modules.block.C3k2            [512, 512, 1, True]           
+  7                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+  8                  -1  1   1380352  ultralytics.nn.modules.block.C3k2            [512, 512, 1, True]           
+  9                  -1  1    656896  ultralytics.nn.modules.block.SPPF            [512, 512, 5]                 
+ 10                  -1  1    990976  ultralytics.nn.modules.block.C2PSA           [512, 512, 1]                 
+ 11                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 12             [-1, 6]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 13                  -1  1   1642496  ultralytics.nn.modules.block.C3k2            [1024, 512, 1, True]          
+ 14                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 15             [-1, 4]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 16                  -1  1    542720  ultralytics.nn.modules.block.C3k2            [1024, 256, 1, True]          
+ 17                  -1  1    590336  ultralytics.nn.modules.conv.Conv             [256, 256, 3, 2]              
+ 18            [-1, 13]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 19                  -1  1   1511424  ultralytics.nn.modules.block.C3k2            [768, 512, 1, True]           
+ 20                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+ 21            [-1, 10]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 22                  -1  1   1642496  ultralytics.nn.modules.block.C3k2            [1024, 512, 1, True]          
+ 23        [16, 19, 22]  1   3718003  ultralytics.nn.modules.head.Segment          [1, 32, 256, 16, None, [256, 512, 512]]
+YOLO11m-seg summary: 254 layers, 22,359,987 parameters, 22,359,971 gradients, 113.5 GFLOPs
+
+Transferred 705/711 items from pretrained weights
+Freezing layer 'model.23.dfl.conv.weight'
+[34m[1mAMP: [0mrunning Automatic Mixed Precision (AMP) checks...
+[34m[1mAMP: [0mchecks passed ✅
+[34m[1mtrain: [0mFast image access ✅ (ping: 0.0±0.0 ms, read: 2269.1±1095.0 MB/s, size: 21.6 KB)
+[K[34m[1mtrain: [0mScanning /home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/labels.cache... 557 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 557/557 194.7Mit/s 0.0s
+[34m[1mtrain: [0m/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/images/frame_00004_jpg.rf.9f3fc8688a4832927d0afbbc6793a0ee.jpg: 1 duplicate labels removed
+[34m[1mtrain: [0m/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/images/frame_00004_jpg.rf.bfa435077af6fcc8c520176a5989e6ba.jpg: 1 duplicate labels removed
+[34m[1mtrain: [0m/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/images/frame_00004_jpg.rf.d18de5ca998cc102a6dd4497f071bbd9.jpg: 1 duplicate labels removed
+[34m[1mtrain: [0m/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/images/frame_00007_jpg.rf.397153d4b4e78977e2db69c02651998d.jpg: 1 duplicate labels removed
+[34m[1mtrain: [0m/home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/train/images/frame_00007_jpg.rf.e32412883bdcecb6abccd8f1b07c9194.jpg: 1 duplicate labels removed
+WARNING ⚠️ Box and segment counts should be equal, but got len(segments) = 925, len(boxes) = 930. To resolve this only boxes will be used and all segments will be removed. To avoid this please supply either a detect or segment dataset, not a detect-segment mixed dataset.
+[34m[1mval: [0mFast image access ✅ (ping: 0.0±0.0 ms, read: 681.6±425.3 MB/s, size: 21.4 KB)
+[K[34m[1mval: [0mScanning /home/bf-robotics/jazzy0605/surgical_instrument_seg.v2i.yolo26/valid/labels.cache... 53 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 53/53 1.9Mit/s 0.0s
+WARNING ⚠️ Box and segment counts should be equal, but got len(segments) = 89, len(boxes) = 91. To resolve this only boxes will be used and all segments will be removed. To avoid this please supply either a detect or segment dataset, not a detect-segment mixed dataset.
+[34m[1moptimizer:[0m SGD(lr=0.0001, momentum=0.9) with parameter groups 115 weight(decay=0.0), 126 weight(decay=0.0005), 125 bias(decay=0.0)
+Plotting labels to /home/bf-robotics/jazzy0605/runs/segment/runs/seg_v2_20260611/yolo11m_v2_20260611/labels.jpg... 
+Image sizes 640 train, 640 val
+Using 8 dataloader workers
+Logging results to [1m/home/bf-robotics/jazzy0605/runs/segment/runs/seg_v2_20260611/yolo11m_v2_20260611[0m
+Starting training for 30 epochs...
+
+      Epoch    GPU_mem   box_loss   seg_loss   cls_loss   dfl_loss   sem_loss  Instances       Size
+[K: 0% ──────────── 0/140  0.7s
+Traceback (most recent call last):
+  File "/home/bf-robotics/jazzy0605/train_v2_20260611.py", line 19, in <module>
+    results = model.train(
+              ^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/engine/model.py", line 792, in train
+    self.trainer.train()
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/engine/trainer.py", line 246, in train
+    self._do_train()
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/engine/trainer.py", line 450, in _do_train
+    loss, self.loss_items = self.model(batch)
+                            ^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/nn/tasks.py", line 143, in forward
+    return self.loss(x, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/nn/tasks.py", line 337, in loss
+    return self.criterion(preds, batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/utils/loss.py", line 474, in __call__
+    return self.loss(self.parse_output(preds), batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/utils/loss.py", line 502, in loss
+    (fg_mask, target_gt_idx, target_bboxes, _, _), det_loss, _ = self.get_assigned_targets_and_loss(preds, batch)
+                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bf-robotics/jazzy0605/kassow_RobotUse/.venv/lib/python3.12/site-packages/ultralytics/utils/loss.py", line 414, in get_assigned_targets_and_loss
+    targets = torch.cat((batch["batch_idx"].view(-1, 1), batch["cls"].view(-1, 1), batch["bboxes"]), 1)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 8 but got size 0 for tensor number 1 in the list.

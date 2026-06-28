@@ -1,0 +1,7 @@
+path: /home/bf-robotics/jazzy0605/surgical_instrument_seg.v1i.yolo26
+train: train/images
+val:   valid/images
+test:  test/images
+
+nc: 1
+names: ['object']
