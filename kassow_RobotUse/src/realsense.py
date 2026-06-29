@@ -3,6 +3,15 @@ import numpy as np
 import logging
 import threading
 from dataclasses import dataclass
+from enum import Enum
+
+# 嘗試導入 Orbbec SDK
+try:
+    import pyorbbecsdk as obs
+    _HAS_ORBBEC = True
+except ImportError:
+    obs = None
+    _HAS_ORBBEC = False
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +23,14 @@ except ImportError:
     cp = None
     _CUDA = False
     logger.info("CuPy 不可用，影像轉換使用 CPU (numpy)。")
+
+
+class CameraType(Enum):
+    """相機類型列舉"""
+    REALSENSE_D435I = "D435I"
+    REALSENSE_D405 = "D405"
+    ORBBEC_GEMINI305 = "Gemini 305"
+    UNKNOWN = "Unknown"
 
 
 # =============================================================================
@@ -33,17 +50,25 @@ class DeviceInfo:
 # =============================================================================
 
 class _Camera:
-    """管理單一 RealSense 相機的連線、背景擷取與中斷。"""
+    """管理單一相機（RealSense 或 Orbbec）的連線、背景擷取與中斷。"""
 
-    def __init__(self, serial: str, width: int, height: int, fps: int):
+    def __init__(self, serial: str, width: int, height: int, fps: int, device_name: str = ""):
         self.serial = serial
         self.width  = width
         self.height = height
         self.fps    = fps
+        self.device_name = device_name
 
-        self._pipeline: rs.pipeline | None         = None
-        self._config:   rs.config   | None         = None
-        self._profile:  rs.pipeline_profile | None = None
+        # 根據設備名稱判斷相機類型
+        self.camera_type = self._detect_camera_type(device_name)
+
+        # RealSense 相關
+        self._pipeline = None  # rs.pipeline 或 obs.Pipeline
+        self._config = None    # rs.config 或 obs.Config
+        self._profile = None   # rs.pipeline_profile 或 obs.Pipeline (for Orbbec)
+
+        # Orbbec 相關
+        self._device = None    # obs.Device
 
         self._lock       = threading.Lock()
         self._stop_event = threading.Event()
@@ -54,15 +79,38 @@ class _Camera:
         self._depth_arr: np.ndarray | None = None  # float32, mm（已對齊至 color，已套 depth_scale）
         self._color_tex: np.ndarray | None = None
         self._ir_tex:    np.ndarray | None = None
-        self._align          = None    # rs.align，connect() 後建立
+        self._align          = None    # rs.align 或 obs.AlignFilter
         self._depth_scale_mm = 1.0     # mm per raw unit（從感測器讀取）
+        self._temporal_filter = None
+        self._hole_filling_filter = None
 
         # 相機內參（連線後從 pipeline profile 讀取）
         self.intrinsics: 'dict|None' = None   # {'fx','fy','cx','cy','w','h'}
 
         self.is_connected: bool = False
+        self._has_ir: bool = False
+
+    def _detect_camera_type(self, device_name: str) -> CameraType:
+        """根據設備名稱判斷相機類型"""
+        name_upper = device_name.upper()
+        if 'GEMINI' in name_upper or '305' in name_upper:
+            return CameraType.ORBBEC_GEMINI305
+        elif 'D435' in name_upper:
+            return CameraType.REALSENSE_D435I
+        elif 'D405' in name_upper:
+            return CameraType.REALSENSE_D405
+        else:
+            return CameraType.UNKNOWN
 
     def connect(self) -> bool:
+        """根據相機類型呼叫適當的連線方法"""
+        if self.camera_type == CameraType.ORBBEC_GEMINI305:
+            return self._connect_orbbec()
+        else:
+            return self._connect_realsense()
+
+    def _connect_realsense(self) -> bool:
+        """連接 RealSense 相機"""
         # 先嘗試 color + depth + IR；若失敗（D405 無 IR）再 fallback 到 color + depth
         for with_ir in (True, False):
             try:
@@ -134,6 +182,108 @@ class _Camera:
         logger.info(f"[{self.serial}] 連線成功（{self.width}×{self.height}@{self.fps}fps, {ir_txt}）")
         return True
 
+    def _connect_orbbec(self) -> bool:
+        """連接 Orbbec 相機（Gemini 305）"""
+        if not _HAS_ORBBEC:
+            logger.error(f"[{self.serial}] Orbbec SDK 未安裝")
+            return False
+
+        try:
+            ctx = obs.Context()
+            dev_list = ctx.query_devices()
+            count = dev_list.get_count()
+
+            if count == 0:
+                logger.error(f"[{self.serial}] 未發現任何 Orbbec 設備")
+                return False
+
+            # 尋找匹配的設備（根據序號或名稱）
+            self._device = None
+            for i in range(count):
+                dev_name = dev_list.get_device_name_by_index(i)
+                if 'GEMINI' in dev_name.upper() or '305' in dev_name.upper():
+                    self._device = dev_list.get_device_by_index(i)
+                    break
+
+            if self._device is None:
+                logger.error(f"[{self.serial}] 未找到 Gemini 305 設備")
+                return False
+
+            # 建立 pipeline 和 config
+            self._pipeline = obs.Pipeline()
+            self._config = obs.Config()
+
+            # 啟用 color 和 depth 流（Orbbec API 只接受 stream type）
+            self._config.enable_stream(obs.OBStreamType.COLOR_STREAM)
+            self._config.enable_stream(obs.OBStreamType.DEPTH_STREAM)
+
+            # 啟動 pipeline
+            self._profile = self._pipeline.start(self._config)
+            self._stop_event.clear()
+
+            # 建立 depth-to-color 對齊器（Orbbec 接受 OBStreamType）
+            self._align = obs.AlignFilter(obs.OBStreamType.COLOR_STREAM)
+
+            # 建立濾波器
+            self._temporal_filter = obs.TemporalFilter()
+            self._hole_filling_filter = obs.HoleFillingFilter()
+
+            # 獲取 depth scale
+            try:
+                # Orbbec 通常 depth scale 為 0.001（1/1000 mm per unit）
+                self._depth_scale_mm = 1.0
+                logger.info(f"[{self.serial}] Orbbec depth_scale={self._depth_scale_mm:.4f} mm/unit")
+            except Exception as e:
+                logger.warning(f"[{self.serial}] 獲取 depth_scale 失敗：{e}")
+
+            # 獲取內參
+            try:
+                # Orbbec 可以從 device 直接獲取參數
+                if hasattr(self._device, 'get_camera_param'):
+                    camera_params = self._device.get_camera_param()
+                    if camera_params:
+                        rgb_intr = camera_params.rgb_intrinsic
+                        self.intrinsics = {
+                            'fx': rgb_intr.fx, 'fy': rgb_intr.fy,
+                            'cx': rgb_intr.cx, 'cy': rgb_intr.cy,
+                            'w':  rgb_intr.width, 'h': rgb_intr.height,
+                        }
+                        logger.info(f"[{self.serial}] 內參: fx={rgb_intr.fx:.1f} fy={rgb_intr.fy:.1f} "
+                                    f"cx={rgb_intr.cx:.1f} cy={rgb_intr.cy:.1f}")
+                else:
+                    # 若無法獲取，設定預設值（Gemini 305 典型值）
+                    self.intrinsics = {
+                        'fx': 616.0, 'fy': 616.0,
+                        'cx': 320.0, 'cy': 240.0,
+                        'w': 640, 'h': 480
+                    }
+                    logger.info(f"[{self.serial}] 使用預設內參（無法從設備讀取）")
+            except Exception as e:
+                # 若讀取失敗，設定預設值
+                self.intrinsics = {
+                    'fx': 616.0, 'fy': 616.0,
+                    'cx': 320.0, 'cy': 240.0,
+                    'w': 640, 'h': 480
+                }
+                logger.warning(f"[{self.serial}] 讀取內參失敗，使用預設值：{e}")
+
+            self._has_ir = False  # Gemini 305 沒有紅外流
+
+            # 啟動捕捉線程
+            self._thread = threading.Thread(
+                target=self._capture_loop_orbbec, daemon=True,
+                name=f"orbbec_{self.serial[:8]}")
+            self._thread.start()
+
+            self.is_connected = True
+            logger.info(f"[{self.serial}] Orbbec Gemini 305 連線成功")
+            return True
+
+        except Exception as e:
+            logger.error(f"[{self.serial}] Orbbec 連線失敗：{e}")
+            self._cleanup()
+            return False
+
     def disconnect(self) -> None:
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
@@ -203,13 +353,112 @@ class _Camera:
             except Exception as e:
                 logger.debug(f"[{self.serial}] 擷取錯誤（已跳過）：{e}")
 
+    def _capture_loop_orbbec(self) -> None:
+        """Orbbec 相機的捕捉迴圈"""
+        for _ in range(30):
+            if self._stop_event.is_set():
+                return
+            try:
+                self._pipeline.wait_for_frames(500)  # Orbbec: 位置參數，不接受 timeout_ms=
+            except Exception:
+                pass
+
+        logger.info(f"[{self.serial}] 暖機完成，開始正式擷取。")
+
+        while not self._stop_event.is_set():
+            try:
+                frames = self._pipeline.wait_for_frames(200)  # Orbbec: 位置參數
+                if frames is None:
+                    continue
+
+                # 對齊 depth 到 color
+                aligned_frames = self._align.process(frames)
+                color_frame = aligned_frames.get_color_frame()
+                depth_frame = aligned_frames.get_depth_frame()
+
+                # 解析 color frame（Orbbec 輸出 YUYV 格式）
+                if color_frame:
+                    color_data = np.asanyarray(color_frame.get_data()).astype(np.uint8)
+                    h = color_frame.get_height()
+                    w = color_frame.get_width()
+
+                    # Orbbec color frame 是 YUYV 格式（1D 數組，長度 = w * h * 2）
+                    if color_data.size == w * h * 2:
+                        # YUYV → BGR 轉換
+                        # YUYV 格式：Y1 U Y2 V （4 字節 = 2 像素）
+                        yuyv = color_data.reshape(-1, 4)  # 每 4 字節是 2 個像素
+
+                        y1 = yuyv[:, 0].astype(np.float32)
+                        u  = yuyv[:, 1].astype(np.float32)
+                        y2 = yuyv[:, 2].astype(np.float32)
+                        v  = yuyv[:, 3].astype(np.float32)
+
+                        # YUV → RGB 轉換公式（BT.601）
+                        u -= 128.0
+                        v -= 128.0
+
+                        # 第一個像素
+                        r1 = (y1 + 1.402 * v).clip(0, 255).astype(np.uint8)
+                        g1 = (y1 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
+                        b1 = (y1 + 1.772 * u).clip(0, 255).astype(np.uint8)
+
+                        # 第二個像素（共享 U, V）
+                        r2 = (y2 + 1.402 * v).clip(0, 255).astype(np.uint8)
+                        g2 = (y2 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
+                        b2 = (y2 + 1.772 * u).clip(0, 255).astype(np.uint8)
+
+                        # 合併為 BGR 3通道
+                        bgr_arr = np.zeros((y1.size * 2, 3), dtype=np.uint8)
+                        bgr_arr[0::2, 0] = b1
+                        bgr_arr[0::2, 1] = g1
+                        bgr_arr[0::2, 2] = r1
+                        bgr_arr[1::2, 0] = b2
+                        bgr_arr[1::2, 1] = g2
+                        bgr_arr[1::2, 2] = r2
+
+                        color_arr = bgr_arr.reshape(h, w, 3)
+                    elif len(color_data.shape) == 3 and color_data.shape[2] == 3:
+                        # RGB 3通道 → BGR
+                        color_arr = color_data[:, :, ::-1].copy()
+                    else:
+                        color_arr = color_data
+                else:
+                    color_arr = None
+
+                # 解析 depth frame
+                if depth_frame:
+                    depth_frame = self._temporal_filter.process(depth_frame)
+                    depth_frame = self._hole_filling_filter.process(depth_frame)
+                    depth_raw = np.asanyarray(depth_frame.get_data()).astype(np.float32)
+                    depth_arr = depth_raw * self._depth_scale_mm
+                else:
+                    depth_arr = None
+
+                # 轉換為紋理
+                color_tex = RealSense._to_texture(color_arr, is_ir=False) if color_arr is not None else None
+
+                with self._lock:
+                    self._color_arr = color_arr
+                    self._depth_arr = depth_arr
+                    self._color_tex = color_tex
+                    self._ir_arr = None
+                    self._ir_tex = None
+
+            except Exception as e:
+                logger.debug(f"[{self.serial}] Orbbec 擷取錯誤（已跳過）：{e}")
+
     def _cleanup(self) -> None:
+        """清理相機資源"""
         if self._pipeline:
             try:
-                self._pipeline.stop()
+                if isinstance(self._pipeline, rs.pipeline):
+                    self._pipeline.stop()
+                elif isinstance(self._pipeline, obs.Pipeline):
+                    self._pipeline.stop()
             except Exception:
                 pass
         self._pipeline = self._config = self._profile = None
+        self._device = None
         self.is_connected = False
         with self._lock:
             self._color_arr = self._ir_arr = self._depth_arr = None
@@ -251,7 +500,7 @@ class RealSense:
 
         count = 0
         for i, info in enumerate(self._devices[:3]):
-            cam = _Camera(info.serial, self.width, self.height, self.fps)
+            cam = _Camera(info.serial, self.width, self.height, self.fps, device_name=info.name)
             self._cameras[i] = cam
             if cam.connect():
                 count += 1
@@ -272,7 +521,7 @@ class RealSense:
         if self._cameras[index] is not None:
             self._cameras[index].disconnect()
         info = self._devices[index]
-        cam  = _Camera(info.serial, self.width, self.height, self.fps)
+        cam  = _Camera(info.serial, self.width, self.height, self.fps, device_name=info.name)
         self._cameras[index] = cam
         result = cam.connect()
         level  = logger.info if result else logger.error
@@ -368,33 +617,63 @@ class RealSense:
         return None
 
     def _scan(self) -> None:
-        ctx = rs.context()
         self._devices.clear()
-        for i, dev in enumerate(ctx.query_devices()):
+
+        # 掃描 RealSense 設備
+        try:
+            ctx = rs.context()
+            for dev in ctx.query_devices():
+                try:
+                    self._devices.append(DeviceInfo(
+                        serial   = dev.get_info(rs.camera_info.serial_number),
+                        name     = dev.get_info(rs.camera_info.name),
+                        firmware = dev.get_info(rs.camera_info.firmware_version),
+                        index    = len(self._devices),
+                    ))
+                    logger.info(f"發現裝置 [{len(self._devices)-1}]：{self._devices[-1].name}  SN: {self._devices[-1].serial}")
+                except Exception as e:
+                    logger.warning(f"無法讀取 RealSense 裝置資訊：{e}")
+        except Exception as e:
+            logger.debug(f"RealSense 掃描失敗：{e}")
+
+        # 掃描 Orbbec 設備
+        if _HAS_ORBBEC:
             try:
-                self._devices.append(DeviceInfo(
-                    serial   = dev.get_info(rs.camera_info.serial_number),
-                    name     = dev.get_info(rs.camera_info.name),
-                    firmware = dev.get_info(rs.camera_info.firmware_version),
-                    index    = i,
-                ))
-                logger.info(f"發現裝置 [{i}]：{self._devices[-1].name}  SN: {self._devices[-1].serial}")
+                ctx = obs.Context()
+                dev_list = ctx.query_devices()
+                count = dev_list.get_count()
+                for i in range(count):
+                    try:
+                        dev_name = dev_list.get_device_name_by_index(i)
+                        # Orbbec 設備無法直接讀取序號，使用名稱 + 索引作為識別
+                        serial = f"{dev_name}_{i}"
+                        self._devices.append(DeviceInfo(
+                            serial   = serial,
+                            name     = dev_name,
+                            firmware = "unknown",
+                            index    = len(self._devices),
+                        ))
+                        logger.info(f"發現裝置 [{len(self._devices)-1}]：{dev_name}  SN: {serial}")
+                    except Exception as e:
+                        logger.warning(f"無法讀取 Orbbec 裝置資訊：{e}")
             except Exception as e:
-                logger.warning(f"無法讀取第 {i} 台裝置資訊：{e}")
+                logger.debug(f"Orbbec 掃描失敗：{e}")
 
         if not self._devices:
-            logger.warning("未偵測到任何 RealSense 裝置。")
+            logger.warning("未偵測到任何相機裝置。")
             return
 
-        # 固定順序：D435I（頭部）排 Cam 1，D405（手部）排 Cam 2
-        # 依型號名稱排序：D435I < D405（字母序），但我們要 D435I 在前
+        # 排序：D435I（頭部）優先，然後 D405，最後 Gemini 305
         def _cam_priority(dev: DeviceInfo) -> int:
             name = dev.name.upper()
             if 'D435' in name:
-                return 0   # 頭部相機 → Cam 1
+                return 0   # 頭部相機 → Cam 0
+            if 'GEMINI' in name or '305' in name:
+                return 1   # 手部相機 → Cam 1
             if 'D405' in name:
-                return 1   # 手部相機 → Cam 2
-            return 2       # 其他
+                return 2   # 其他 RealSense
+            return 3       # 其他設備
+
         self._devices.sort(key=_cam_priority)
         for i, d in enumerate(self._devices):
             d.index = i
