@@ -209,6 +209,10 @@ class _Camera:
                 logger.error(f"[{self.serial}] 未找到 Gemini 305 設備")
                 return False
 
+            # Orbbec Gemini 305 原生分辨率固定為 848×530，忽略傳入的 width/height
+            self.width = 848
+            self.height = 530
+
             # 建立 pipeline 和 config
             self._pipeline = obs.Pipeline()
             self._config = obs.Config()
@@ -382,46 +386,34 @@ class _Camera:
                     h = color_frame.get_height()
                     w = color_frame.get_width()
 
-                    # Orbbec color frame 是 YUYV 格式（1D 數組，長度 = w * h * 2）
-                    if color_data.size == w * h * 2:
-                        # YUYV → BGR 轉換
-                        # YUYV 格式：Y1 U Y2 V （4 字節 = 2 像素）
-                        yuyv = color_data.reshape(-1, 4)  # 每 4 字節是 2 個像素
+                    # YUYV → BGR 轉換（驗證過的邏輯）
+                    yuyv = color_data.reshape(-1, 4)
 
-                        y1 = yuyv[:, 0].astype(np.float32)
-                        u  = yuyv[:, 1].astype(np.float32)
-                        y2 = yuyv[:, 2].astype(np.float32)
-                        v  = yuyv[:, 3].astype(np.float32)
+                    y1 = yuyv[:, 0].astype(np.float32)
+                    u  = yuyv[:, 1].astype(np.float32)
+                    y2 = yuyv[:, 2].astype(np.float32)
+                    v  = yuyv[:, 3].astype(np.float32)
 
-                        # YUV → RGB 轉換公式（BT.601）
-                        u -= 128.0
-                        v -= 128.0
+                    u -= 128.0
+                    v -= 128.0
 
-                        # 第一個像素
-                        r1 = (y1 + 1.402 * v).clip(0, 255).astype(np.uint8)
-                        g1 = (y1 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
-                        b1 = (y1 + 1.772 * u).clip(0, 255).astype(np.uint8)
+                    r1 = (y1 + 1.402 * v).clip(0, 255).astype(np.uint8)
+                    g1 = (y1 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
+                    b1 = (y1 + 1.772 * u).clip(0, 255).astype(np.uint8)
 
-                        # 第二個像素（共享 U, V）
-                        r2 = (y2 + 1.402 * v).clip(0, 255).astype(np.uint8)
-                        g2 = (y2 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
-                        b2 = (y2 + 1.772 * u).clip(0, 255).astype(np.uint8)
+                    r2 = (y2 + 1.402 * v).clip(0, 255).astype(np.uint8)
+                    g2 = (y2 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
+                    b2 = (y2 + 1.772 * u).clip(0, 255).astype(np.uint8)
 
-                        # 合併為 BGR 3通道
-                        bgr_arr = np.zeros((y1.size * 2, 3), dtype=np.uint8)
-                        bgr_arr[0::2, 0] = b1
-                        bgr_arr[0::2, 1] = g1
-                        bgr_arr[0::2, 2] = r1
-                        bgr_arr[1::2, 0] = b2
-                        bgr_arr[1::2, 1] = g2
-                        bgr_arr[1::2, 2] = r2
+                    bgr_arr = np.zeros((y1.size * 2, 3), dtype=np.uint8)
+                    bgr_arr[0::2, 0] = b1
+                    bgr_arr[0::2, 1] = g1
+                    bgr_arr[0::2, 2] = r1
+                    bgr_arr[1::2, 0] = b2
+                    bgr_arr[1::2, 1] = g2
+                    bgr_arr[1::2, 2] = r2
 
-                        color_arr = bgr_arr.reshape(h, w, 3)
-                    elif len(color_data.shape) == 3 and color_data.shape[2] == 3:
-                        # RGB 3通道 → BGR
-                        color_arr = color_data[:, :, ::-1].copy()
-                    else:
-                        color_arr = color_data
+                    color_arr = bgr_arr.reshape(h, w, 3)
                 else:
                     color_arr = None
 

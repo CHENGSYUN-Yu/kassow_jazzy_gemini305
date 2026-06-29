@@ -1248,17 +1248,31 @@ class App:
             elif cam_idx == 1:
                 self._handle_roi1_drag()
 
-        # RGB 模式：優先顯示 YOLO overlay
-        if stream == "RGB":
-            if cam_idx == 0:
-                overlay = self._auto_grasp._head_detector.get_overlay_tex()
-            else:
-                overlay = self._auto_grasp._hand_detector.get_overlay_tex()
+        # RGB 模式：優先顯示 YOLO overlay（Orbbec 分辨率不匹配，暫不支持 overlay）
+        if stream == "RGB" and cam_idx == 0:
+            overlay = self._auto_grasp._head_detector.get_overlay_tex()
             if overlay is not None:
                 dpg.set_value("cam_texture", overlay)
                 return
         tex_data = self._rs.get_texture(cam_idx, stream)
         if tex_data is not None:
+            # 檢查紋理尺寸是否與 GUI 不匹配
+            expected_size = self._tex_w * self._tex_h * 4
+            if tex_data.size != expected_size and cam_idx == 1:
+                # Orbbec (cam_idx=1) 是 848×530，需調整到 1280×720
+                # tex_data 是 RGBA float32，排列為 [R, G, B, A, R, G, B, A, ...]
+                rgba_view = tex_data.reshape(530, 848, 4)
+                rgb_view = (rgba_view[:,:,:3] * 255).astype(np.uint8)  # RGB uint8
+                rgb_resized = cv2.resize(rgb_view, (self._tex_w, self._tex_h))
+                # 轉回 float32 RGBA
+                tex_rgba = np.zeros((self._tex_w * self._tex_h * 4,), dtype=np.float32)
+                rgb_f = (rgb_resized.astype(np.float32) / 255.0)
+                tex_rgba[0::4] = rgb_f[:,:,0].ravel()  # R
+                tex_rgba[1::4] = rgb_f[:,:,1].ravel()  # G
+                tex_rgba[2::4] = rgb_f[:,:,2].ravel()  # B
+                tex_rgba[3::4] = 1.0                   # A
+                tex_data = tex_rgba
+
             dpg.set_value("cam_texture", tex_data)
 
         # 更新機器人 3D 預覽
