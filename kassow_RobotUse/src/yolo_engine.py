@@ -146,9 +146,16 @@ class YoloEngine:
     單相機 YOLO 推論引擎（獨立工廠物件）。
 
     每個實例對應一台相機，擁有各自的模型、執行緒、smoother。
+    支持任意分辨率的輸入（YOLO 自動縮放）。
+
     cam_id:
-      0 = D435I（頭部相機，GUI Cam 1），預設信心分 0.15
-      1 = D405 （手部相機，GUI Cam 2），預設信心分 0.50
+      0 = D435I（頭部相機），預設信心分 0.15
+      1 = Orbbec Gemini 305（手部相機）或 D405，預設信心分 0.50
+
+    獨立性設計：
+    - 各實例獨立的 model, thread, smoother
+    - 各實例獨立的 _dets, _tex, _roi 存儲
+    - ROI 配置分開存儲（cam_id 自動區分）
     """
 
     def __init__(self, model_path: str, cam_id: int = 0, fps: float = 10.0):

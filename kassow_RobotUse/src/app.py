@@ -1248,10 +1248,29 @@ class App:
             elif cam_idx == 1:
                 self._handle_roi1_drag()
 
-        # RGB 模式：優先顯示 YOLO overlay（Orbbec 分辨率不匹配，暫不支持 overlay）
-        if stream == "RGB" and cam_idx == 0:
-            overlay = self._auto_grasp._head_detector.get_overlay_tex()
+        # RGB 模式：優先顯示 YOLO overlay
+        if stream == "RGB":
+            if cam_idx == 0:
+                overlay = self._auto_grasp._head_detector.get_overlay_tex()
+            elif cam_idx == 1:
+                overlay = self._auto_grasp._hand_detector.get_overlay_tex()  # Orbbec 支援 YOLO
+            else:
+                overlay = None
+
             if overlay is not None:
+                # Orbbec overlay 也需要尺寸調整（848×530 → 1280×720）
+                if overlay.size != (self._tex_w * self._tex_h * 4) and cam_idx == 1:
+                    rgba_view = overlay.reshape(530, 848, 4)
+                    rgb_view = (rgba_view[:,:,:3] * 255).astype(np.uint8)
+                    rgb_resized = cv2.resize(rgb_view, (self._tex_w, self._tex_h))
+                    tex_rgba = np.zeros((self._tex_w * self._tex_h * 4,), dtype=np.float32)
+                    rgb_f = (rgb_resized.astype(np.float32) / 255.0)
+                    tex_rgba[0::4] = rgb_f[:,:,0].ravel()  # R
+                    tex_rgba[1::4] = rgb_f[:,:,1].ravel()  # G
+                    tex_rgba[2::4] = rgb_f[:,:,2].ravel()  # B
+                    tex_rgba[3::4] = 1.0                   # A
+                    overlay = tex_rgba
+
                 dpg.set_value("cam_texture", overlay)
                 return
         tex_data = self._rs.get_texture(cam_idx, stream)

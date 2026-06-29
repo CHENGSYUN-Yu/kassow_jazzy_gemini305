@@ -128,7 +128,7 @@ class AutoGrasp:
 
         # ── YOLO 偵測物件（各自獨立）─────────────────────────────────────────
         self._head_detector = YoloEngine(HEAD_MODEL_PATH, cam_id=0, fps=10.0)  # D435I 頭部
-        self._hand_detector = YoloEngine(HAND_MODEL_PATH, cam_id=1, fps=10.0)  # D405 手部
+        self._hand_detector = YoloEngine(HAND_MODEL_PATH, cam_id=1, fps=10.0)  # Orbbec Gemini 305 手部
 
         # ── 目標位姿硬性補償（套用在 Cam2Flange 之前）────────────────────────
         self._pose_offset = PoseOffset(dx=25.0)   # 手部相機接近點 x +25mm
