@@ -4,6 +4,7 @@ import logging
 import threading
 from dataclasses import dataclass
 from enum import Enum
+from typing import Union
 
 # 嘗試導入 Orbbec SDK
 try:
@@ -14,6 +15,12 @@ except ImportError:
     _HAS_ORBBEC = False
 
 logger = logging.getLogger(__name__)
+
+# YUYV → RGB 轉換常數（BT.601 標準）
+_YUV_CB = 1.402      # Cr to R
+_YUV_CR = 1.772      # Cb to B
+_YUV_G1 = 0.344136   # Cb component for G
+_YUV_G2 = 0.714136   # Cr component for G
 
 try:
     import cupy as cp
@@ -63,12 +70,12 @@ class _Camera:
         self.camera_type = self._detect_camera_type(device_name)
 
         # RealSense 相關
-        self._pipeline = None  # rs.pipeline 或 obs.Pipeline
-        self._config = None    # rs.config 或 obs.Config
-        self._profile = None   # rs.pipeline_profile 或 obs.Pipeline (for Orbbec)
+        self._pipeline: Union[rs.pipeline, object] | None = None
+        self._config: Union[rs.config, object] | None = None
+        self._profile: Union[rs.pipeline_profile, object] | None = None
 
         # Orbbec 相關
-        self._device = None    # obs.Device
+        self._device: object | None = None
 
         self._lock       = threading.Lock()
         self._stop_event = threading.Event()
@@ -397,13 +404,13 @@ class _Camera:
                     u -= 128.0
                     v -= 128.0
 
-                    r1 = (y1 + 1.402 * v).clip(0, 255).astype(np.uint8)
-                    g1 = (y1 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
-                    b1 = (y1 + 1.772 * u).clip(0, 255).astype(np.uint8)
+                    r1 = (y1 + _YUV_CB * v).clip(0, 255).astype(np.uint8)
+                    g1 = (y1 - _YUV_G1 * u - _YUV_G2 * v).clip(0, 255).astype(np.uint8)
+                    b1 = (y1 + _YUV_CR * u).clip(0, 255).astype(np.uint8)
 
-                    r2 = (y2 + 1.402 * v).clip(0, 255).astype(np.uint8)
-                    g2 = (y2 - 0.344136 * u - 0.714136 * v).clip(0, 255).astype(np.uint8)
-                    b2 = (y2 + 1.772 * u).clip(0, 255).astype(np.uint8)
+                    r2 = (y2 + _YUV_CB * v).clip(0, 255).astype(np.uint8)
+                    g2 = (y2 - _YUV_G1 * u - _YUV_G2 * v).clip(0, 255).astype(np.uint8)
+                    b2 = (y2 + _YUV_CR * u).clip(0, 255).astype(np.uint8)
 
                     bgr_arr = np.zeros((y1.size * 2, 3), dtype=np.uint8)
                     bgr_arr[0::2, 0] = b1
@@ -443,10 +450,7 @@ class _Camera:
         """清理相機資源"""
         if self._pipeline:
             try:
-                if isinstance(self._pipeline, rs.pipeline):
-                    self._pipeline.stop()
-                elif isinstance(self._pipeline, obs.Pipeline):
-                    self._pipeline.stop()
+                self._pipeline.stop()  # 兩個 SDK 都有 stop() 方法
             except Exception:
                 pass
         self._pipeline = self._config = self._profile = None
