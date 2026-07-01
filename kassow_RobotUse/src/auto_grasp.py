@@ -222,7 +222,7 @@ class AutoGrasp:
         self._rs = None
         self._yaw_offset_deg = -45.0
         self._use_move_linear = True    # True = MoveLinear 服務（預設）；False = jog P-control
-        self._auto_mode = False         # True = 全自動連續執行；False = 單步手動確認
+        self._auto_mode = True          # True = 全自動連續執行；False = 單步手動確認
 
     @property
     def _grasp_z_limit(self) -> float:

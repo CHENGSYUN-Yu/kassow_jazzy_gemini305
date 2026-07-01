@@ -109,7 +109,7 @@ class Cam2Flange:
 
         return {
             'x_mm':    float(cam_target['x_mm'])    + float(offset[0]),
-            'y_mm':    float(cam_target['y_mm'])    + float(offset[1]),
+            'y_mm':    float(cam_target['y_mm'])    + 0.0,
             'z_mm':    float(cam_target['z_mm'])    + float(offset[2]),
             'yaw_deg': float(cam_target['yaw_deg']),
             'source':  copy.deepcopy(cam_target),
