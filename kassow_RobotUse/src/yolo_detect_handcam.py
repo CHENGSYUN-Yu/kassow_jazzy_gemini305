@@ -2,7 +2,7 @@
 yolo_detect_handcam.py — 手部相機 YOLO 偵測引擎（完整獨立工廠）
 
 職責：
-    以手部相機（EIH，RealSense D405）的每幀畫面執行 YOLO 偵測。
+    以手部相機（Orbbec Gemini 305）的每幀畫面執行 YOLO 偵測。
     完整獨立實作，不依賴 YoloDetector，可單獨演進。
 
 與 YoloDetector 的差異：

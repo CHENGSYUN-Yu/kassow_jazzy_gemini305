@@ -8,8 +8,8 @@ yolo_engine.py — 單相機 GPU YOLO 推論引擎（獨立工廠物件）
   - ROI 自動存檔到 config/roi.json，開啟 GUI 自動載入
 
 使用：
-    head = YoloEngine(model_path, cam_id=0, fps=10.0)  # D435I
-    hand = YoloEngine(model_path, cam_id=1, fps=10.0)  # D405
+    head = YoloEngine(model_path, cam_id=0, fps=10.0)  # D435I (頭部)
+    hand = YoloEngine(model_path, cam_id=1, fps=10.0)  # Orbbec Gemini 305 (手部)
     head.start(rs)
     hand.start(rs)
     tex  = head.get_overlay_tex()

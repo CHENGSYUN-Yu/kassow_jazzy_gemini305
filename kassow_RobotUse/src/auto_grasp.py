@@ -56,7 +56,7 @@ _BASE = os.path.join(os.path.dirname(__file__), '..')
 HEAD_MODEL_PATH = os.path.join(_BASE, 'models', 'best.pt')
 HAND_MODEL_PATH = os.path.join(_BASE, 'models', 'best20260603.pt')
 T_MATRIX_PATH = os.path.join(_BASE, 'T_matrix_20260603_head30.npy')   # 頭部相機→base
-EIH_T_PATH    = os.path.join(_BASE, 'T_cam2gripper_20260609_26point.npy')  # 手部相機→法蘭（暫時替換）
+EIH_T_PATH    = os.path.join(_BASE, 'T_cam2gripper_gemini.npy')  # 手部相機→法蘭（Gemini 305 標定）
 
 # ── 自動模式時序常數（秒）────────────────────────────────────────────────────
 _AUTO_CONFIRM_DELAYS: dict[str, float] = {
@@ -923,7 +923,7 @@ class AutoGrasp:
             self._log('[手腕相機] 深度圖或內參未就緒')
             return
 
-        # 設定 D405 內參
+        # 設定 Gemini 305 內參 (fx=409.33, fy=409.11, cx=422.81, cy=272.61 @ 848×530)
         self._p2h.set_intrinsics(
             intr['fx'], intr['fy'], intr['cx'], intr['cy'])
 

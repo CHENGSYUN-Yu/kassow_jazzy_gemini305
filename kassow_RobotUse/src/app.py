@@ -17,7 +17,7 @@ from src.logger import Logger
 class _DualYolo:  # 已不使用，保留備查
     def __init__(self, head, hand):
         self._head = head  # cam_id=0 D435I
-        self._hand = hand  # cam_id=1 D405
+        self._hand = hand  # cam_id=1 Orbbec Gemini 305
 
     def _get(self, cam_id: int):
         return self._head if cam_id == 0 else self._hand
@@ -322,7 +322,7 @@ class App:
             dpg.add_separator()
             dpg.add_spacer(height=4)
 
-            _CAM_ROLE = ["Cam 1 (頭部 D435I)", "Cam 2 (手部 D405)", "Cam 3"]
+            _CAM_ROLE = ["Cam 1 (頭部 D435I)", "Cam 2 (手部 Gemini 305)", "Cam 3"]
             dpg.add_text("裝置狀態", color=(200, 200, 100))
             for i in range(3):
                 with dpg.group(horizontal=True):
@@ -972,7 +972,7 @@ class App:
         dpg.add_spacer(height=16)
         dpg.add_separator()
         dpg.add_spacer(height=8)
-        dpg.add_text("Cam 1 (手部 D405) 錄影", color=(100, 255, 180))
+        dpg.add_text("Cam 2 (手部 Gemini 305) 錄影", color=(100, 255, 180))
         dpg.add_separator()
         dpg.add_spacer(height=6)
 

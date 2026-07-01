@@ -117,8 +117,8 @@ class _Camera:
             return self._connect_realsense()
 
     def _connect_realsense(self) -> bool:
-        """連接 RealSense 相機"""
-        # 先嘗試 color + depth + IR；若失敗（D405 無 IR）再 fallback 到 color + depth
+        """連接 RealSense 相機（D435I 或 D405）"""
+        # 先嘗試 color + depth + IR；若失敗（某些 RealSense 無 IR）再 fallback 到 color + depth
         for with_ir in (True, False):
             try:
                 self._pipeline = rs.pipeline()
@@ -659,15 +659,15 @@ class RealSense:
             logger.warning("未偵測到任何相機裝置。")
             return
 
-        # 排序：D435I（頭部）優先，然後 D405，最後 Gemini 305
+        # 排序：D435I（頭部）優先，然後 Gemini 305（手部），最後 D405（備用）
         def _cam_priority(dev: DeviceInfo) -> int:
             name = dev.name.upper()
             if 'D435' in name:
                 return 0   # 頭部相機 → Cam 0
             if 'GEMINI' in name or '305' in name:
-                return 1   # 手部相機 → Cam 1
+                return 1   # 主要手部相機（Orbbec Gemini 305）→ Cam 1
             if 'D405' in name:
-                return 2   # 其他 RealSense
+                return 2   # 備用手部相機（RealSense D405）
             return 3       # 其他設備
 
         self._devices.sort(key=_cam_priority)

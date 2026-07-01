@@ -1,17 +1,17 @@
 """
-get_depth_handcam.py — 手腕相機（D405）深度讀取物件（獨立工廠）
+get_depth_handcam.py — 手腕相機（Orbbec Gemini 305）深度讀取物件（獨立工廠）
 
 職責：
-    從手腕相機（RealSense D405）的深度圖，
+    從手腕相機（Orbbec Gemini 305）的深度圖，
     取得指定像素位置的深度值（mm）。
 
     功能與 DepthReader 相同，但完整獨立實作，不依賴 DepthReader：
-    - 可針對 D405 特性獨立調整（近距離精度更高、有效深度範圍不同）
+    - 可針對 Gemini 305 特性獨立調整（近距離精度更高、有效深度範圍不同）
     - 內部修改不影響頭部相機的深度讀取
 
-D405 特性：
-    有效深度範圍：70mm ～ 500mm（近距離，適合 EIH 補償）
-    深度圖來源：/cam1/aligned_depth_to_color/image_raw（uint16，mm）
+Gemini 305 特性：
+    有效深度範圍：50mm ～ 1000mm（支援手腕親密距離拍攝）
+    深度圖來源：Orbbec SDK depth stream（uint16，mm）
 
 外部使用方式：
     gd = GetDepthHandcam(patch_size=5)
@@ -26,7 +26,7 @@ import numpy as np
 
 class GetDepthHandcam:
     """
-    手腕相機（D405）深度讀取物件。
+    手腕相機（Orbbec Gemini 305）深度讀取物件。
 
     空間濾波：patch 中位數採樣，自動過濾無效像素（深度=0）。
     時間濾波：最近 buffer_size 幀有效深度值的中位數，抑制跨幀隨機跳動。

@@ -1,0 +1,56 @@
+[07/01 13:54:09.105474][info][762602][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[07/01 13:54:09.105486][info][762602][DeviceManager.cpp:25] Current found device(s): (1)
+[07/01 13:54:09.105487][info][762602][DeviceManager.cpp:34] 	- Name: Gemini 305, PID: 0x0840, SN/ID: CV2R1610001E, Connection: USB3.2
+[07/01 13:54:09.105488][info][762602][DeviceManager.cpp:405] Enable net device enumeration: true
+[07/01 13:54:10.110193][info][762602][DeviceManager.cpp:25] Current device(s) list: (1)
+[07/01 13:54:10.110209][info][762602][DeviceManager.cpp:34] 	- Name: Gemini 305, PID: 0x0840, SN/ID: CV2R1610001E, Connection: USB3.2
+[07/01 13:54:10.111272][warning][762602][ObLibuvcDevicePort.cpp:71] uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+[07/01 13:54:10.111297][warning][762602][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: ObLibuvcDevicePort.cpp(72)
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: IO
+ - status: 115
+[07/01 13:54:10.111360][warning][762602][DeviceBase.cpp:357] Execute failure! A libobsensor_exception has occurred!
+ - where: DeviceBase.cpp(357):getComponent
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: N11libobsensor23unrecoverable_exceptionE
+ - status: 115
+[07/01 13:54:10.112168][warning][762602][ObLibuvcDevicePort.cpp:71] uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+[07/01 13:54:10.112176][warning][762602][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: ObLibuvcDevicePort.cpp(72)
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: IO
+ - status: 115
+[07/01 13:54:10.112195][warning][762602][DeviceBase.cpp:357] Execute failure! A libobsensor_exception has occurred!
+ - where: DeviceBase.cpp(357):getComponent
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: N11libobsensor23unrecoverable_exceptionE
+ - status: 115
+[07/01 13:54:26.265010][info][762800][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[07/01 13:54:26.265033][info][762800][DeviceManager.cpp:25] Current found device(s): (1)
+[07/01 13:54:26.265035][info][762800][DeviceManager.cpp:34] 	- Name: Gemini 305, PID: 0x0840, SN/ID: CV2R1610001E, Connection: USB3.2
+[07/01 13:54:26.265038][info][762800][DeviceManager.cpp:405] Enable net device enumeration: true
+[07/01 13:54:27.269602][info][762800][DeviceManager.cpp:25] Current device(s) list: (1)
+[07/01 13:54:27.269613][info][762800][DeviceManager.cpp:34] 	- Name: Gemini 305, PID: 0x0840, SN/ID: CV2R1610001E, Connection: USB3.2
+[07/01 13:54:27.270632][warning][762800][ObLibuvcDevicePort.cpp:71] uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+[07/01 13:54:27.270654][warning][762800][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: ObLibuvcDevicePort.cpp(72)
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: IO
+ - status: 115
+[07/01 13:54:27.270721][warning][762800][DeviceBase.cpp:357] Execute failure! A libobsensor_exception has occurred!
+ - where: DeviceBase.cpp(357):getComponent
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: N11libobsensor23unrecoverable_exceptionE
+ - status: 115
+[07/01 13:54:27.271290][warning][762800][ObLibuvcDevicePort.cpp:71] uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+[07/01 13:54:27.271297][warning][762800][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: ObLibuvcDevicePort.cpp(72)
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: IO
+ - status: 115
+[07/01 13:54:27.271320][warning][762800][DeviceBase.cpp:357] Execute failure! A libobsensor_exception has occurred!
+ - where: DeviceBase.cpp(357):getComponent
+ - msg: uvc_open failed: [Path: 2-4.1-36.0, Return Code: -6]
+ - type: N11libobsensor23unrecoverable_exceptionE
+ - status: 115
