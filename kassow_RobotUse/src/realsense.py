@@ -425,13 +425,34 @@ class _Camera:
                     color_arr = None
 
                 # 解析 depth frame
+                depth_arr = None
                 if depth_frame:
-                    depth_frame = self._temporal_filter.process(depth_frame)
-                    depth_frame = self._hole_filling_filter.process(depth_frame)
-                    depth_raw = np.asanyarray(depth_frame.get_data()).astype(np.float32)
-                    depth_arr = depth_raw * self._depth_scale_mm
-                else:
-                    depth_arr = None
+                    try:
+                        depth_frame = self._temporal_filter.process(depth_frame)
+                        depth_frame = self._hole_filling_filter.process(depth_frame)
+                        depth_raw = np.asanyarray(depth_frame.get_data()).astype(np.float32)
+                        logger.debug(f"[{self.serial}] 深度原始數據：形狀={depth_raw.shape}, 大小={depth_raw.size}, dtype={depth_raw.dtype}")
+
+                        # 如果深度數據是 1D，需要 reshape
+                        if depth_raw.ndim == 1:
+                            expected_size = self.height * self.width
+                            if depth_raw.size == expected_size:
+                                depth_raw = depth_raw.reshape(self.height, self.width)
+                                logger.debug(f"[{self.serial}] 深度數據 reshape 完成：{depth_raw.shape}")
+                            elif depth_raw.size == expected_size * 2:
+                                # 如果大小是預期的 2 倍，可能是 uint16 數據被當作 uint8 返回
+                                depth_raw = depth_raw[:expected_size].reshape(self.height, self.width)
+                                logger.warning(f"[{self.serial}] 深度數據大小異常（2x），已截取：{depth_raw.shape}")
+                            else:
+                                logger.error(f"[{self.serial}] 深度數據大小不匹配：{depth_raw.size} vs {expected_size}")
+                                depth_arr = None
+                                depth_frame = None
+
+                        if depth_frame is not None:
+                            depth_arr = depth_raw * self._depth_scale_mm
+                    except Exception as e:
+                        logger.warning(f"[{self.serial}] 深度幀處理失敗：{type(e).__name__}: {e}")
+                        depth_arr = None
 
                 # 轉換為紋理
                 color_tex = RealSense._to_texture(color_arr, is_ir=False) if color_arr is not None else None
