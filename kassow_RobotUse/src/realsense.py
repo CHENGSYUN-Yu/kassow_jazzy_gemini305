@@ -262,21 +262,21 @@ class _Camera:
                         logger.info(f"[{self.serial}] 內參: fx={rgb_intr.fx:.1f} fy={rgb_intr.fy:.1f} "
                                     f"cx={rgb_intr.cx:.1f} cy={rgb_intr.cy:.1f}")
                 else:
-                    # 若無法獲取，設定預設值（Gemini 305 典型值）
+                    # 若無法獲取，設定預設值（Gemini 305 @ 848×530 模式）
                     self.intrinsics = {
-                        'fx': 616.0, 'fy': 616.0,
-                        'cx': 320.0, 'cy': 240.0,
-                        'w': 640, 'h': 480
+                        'fx': 409.33, 'fy': 409.11,
+                        'cx': 422.81, 'cy': 272.61,
+                        'w': 848, 'h': 530
                     }
-                    logger.info(f"[{self.serial}] 使用預設內參（無法從設備讀取）")
+                    logger.info(f"[{self.serial}] 使用預設內參（無法從設備讀取）：fx=409.33 fy=409.11 cx=422.81 cy=272.61")
             except Exception as e:
-                # 若讀取失敗，設定預設值
+                # 若讀取失敗，設定預設值（Gemini 305 @ 848×530 模式）
                 self.intrinsics = {
-                    'fx': 616.0, 'fy': 616.0,
-                    'cx': 320.0, 'cy': 240.0,
-                    'w': 640, 'h': 480
+                    'fx': 409.33, 'fy': 409.11,
+                    'cx': 422.81, 'cy': 272.61,
+                    'w': 848, 'h': 530
                 }
-                logger.warning(f"[{self.serial}] 讀取內參失敗，使用預設值：{e}")
+                logger.warning(f"[{self.serial}] 讀取內參失敗，使用預設值（Gemini 305 @ 848×530）：{e}")
 
             self._has_ir = False  # Gemini 305 沒有紅外流
 
