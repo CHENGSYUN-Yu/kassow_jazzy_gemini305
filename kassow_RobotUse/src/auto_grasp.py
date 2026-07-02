@@ -877,24 +877,53 @@ class AutoGrasp:
         self._set_phase('handcam_detecting', '🔍 手腕相機偵測中，等待穩定結果...')
 
         if self._auto_mode:
-            # 自動模式：固定等 5s（讓 bbox 穩定），再取最新結果
-            def _handcam_timer():
+            # 自動模式：前 5s 初始積累 + 檢查
+            # 5s 後等待第一個 bbox 出現，觸發 sleep 5s + 檢查邏輯
+            def _handcam_waiter():
+                # 【前 5 秒：初始積累】
                 time.sleep(_HANDCAM_DETECT_WAIT_S)
                 if self._phase != 'handcam_detecting':
                     return
+
+                # 【檢查前 5 秒結果】
                 if self._handcam_selected is not None:
+                    # ✅ 進入 confirm
                     pos_b = self._handcam_selected.get('pos_base_mm', [0, 0, 0])
                     txt = (
-                        f'手腕相機偵測結果（5s 穩定等待後）：\n'
+                        f'手腕相機偵測結果：\n'
                         f'  pos_base = {[round(v, 1) for v in pos_b]}\n'
                         f'  yaw = {round(self._handcam_selected.get("yaw_base_deg") or 0, 1)}°'
                     )
                     self._set_phase('confirm_handcam', txt)
-                else:
-                    self._set_phase('stopped',
-                        '⚠ 手腕相機 5s 內未偵測到器械，流程停止')
-            threading.Thread(target=_handcam_timer, daemon=True,
-                             name='handcam_5s_timer').start()
+                    return
+
+                # 【5 秒後：等待第一個 bbox 出現，觸發 sleep 5s 確認】
+                prev_had_bbox = False
+                while self._phase == 'handcam_detecting':
+                    has_bbox = self._handcam_selected is not None
+
+                    # 檢測「第一次出現 bbox」事件
+                    if not prev_had_bbox and has_bbox:
+                        # 觸發 sleep 5s 穩定期
+                        time.sleep(_HANDCAM_DETECT_WAIT_S)
+
+                        # 穩定期後檢查
+                        if self._handcam_selected is not None:
+                            # ✅ 進入 confirm
+                            pos_b = self._handcam_selected.get('pos_base_mm', [0, 0, 0])
+                            txt = (
+                                f'手腕相機偵測結果：\n'
+                                f'  pos_base = {[round(v, 1) for v in pos_b]}\n'
+                                f'  yaw = {round(self._handcam_selected.get("yaw_base_deg") or 0, 1)}°'
+                            )
+                            self._set_phase('confirm_handcam', txt)
+                            return
+                        # 否則 bbox 消失，繼續等待下一個
+
+                    prev_had_bbox = has_bbox
+                    time.sleep(0.1)
+            threading.Thread(target=_handcam_waiter, daemon=True,
+                             name='handcam_waiter').start()
 
     def _process_handcam(self) -> None:
         """
