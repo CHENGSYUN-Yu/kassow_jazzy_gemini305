@@ -436,7 +436,7 @@ class AutoGrasp:
             dpg.add_text('信心分門檻 — Cam 2 手部相機：', color=(180, 180, 180))
             dpg.add_slider_float(
                 tag='ag_conf_thresh_cam1',
-                default_value=0.50,
+                default_value=0.25,
                 min_value=0.05, max_value=0.99,
                 width=iw, format='%.2f',
                 callback=self._on_conf_thresh_cam1,
