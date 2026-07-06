@@ -60,15 +60,17 @@ EIH_T_PATH    = os.path.join(_BASE, 'T_cam2gripper_gemini.npy')  # 手部相機�
 
 # ── 自動模式時序常數（秒）────────────────────────────────────────────────────
 _AUTO_CONFIRM_DELAYS: dict[str, float] = {
-    'confirm_selection':     3.0,   # 頭部相機：固定等 3s（bbox 穩定）
-    'confirm_target':        0.3,
-    'confirm_arrived':       0.3,
-    'confirm_handcam':       0.3,
-    'confirm_grasp_target':  0.3,
-    'confirm_grasp_arrived': 0.3,
+    'confirm_selection':      3.0,   # 頭部相機：固定等 3s（bbox 穩定）
+    'confirm_target':         0.3,
+    'confirm_arrived':        0.3,
+    'confirm_handcam':        0.3,
+    'confirm_grasp_target':   0.3,
+    'confirm_grasp_arrived':  0.3,
     'confirm_gripper_closed': 0.3,
-    'confirm_recording':     0.3,
-    'confirm_place_arrived': 0.3,
+    'confirm_recording':      0.3,
+    'confirm_place_arrived':  0.3,
+    # 注意：confirm_grasp_complete 和 confirm_restore_complete 不在此表
+    # 因為它們需要手動確認，不自動推進
 }
 _HANDCAM_DETECT_WAIT_S  = 5.0   # 手腕相機：到位後固定等 5s 再取結果
 _HOME_RESTORE_WAIT_S    = 2.0   # 全部放置後在 Home 等待 2s
@@ -93,7 +95,9 @@ _PHASE_LABELS = {
     'confirm_place_arrived':  '⏸ 確認：已到放置位置',
     'opening_gripper':        '✋ 夾爪張開中...',
     'complete':               '✅ 完成',
+    'confirm_grasp_complete': '⏸ 確認：三個器械夾取完成',
     'restoring':              '🔄 還原器械中...',
+    'confirm_restore_complete': '⏸ 確認：三個器械已還原',
     'restore_complete':       '✅ 器械已全數還原',
     'stopped':                '■ 已停止',
 }
@@ -332,7 +336,7 @@ class AutoGrasp:
         pos = first['pos_base_mm']
         raw_angle = first.get('angle_deg', 0.0)
         txt = (
-            f'YOLO 偵測到目標（完整座標轉換）：\n'
+            f' 偵測到目標（完整座標轉換）：\n'
             f'  conf       = {first["conf"]:.2f}\n'
             f'  depth      = {first.get("depth_mm", 0):.0f} mm\n'
             f'  pos_base   = {[round(v, 1) for v in pos]}\n'
@@ -609,7 +613,7 @@ class AutoGrasp:
         if yolo_ready and rs_ready:
             # 真實偵測模式：tick() 會呼叫 _try_inject_detection() 觸發
             self._set_phase('detecting',
-                '🔍 YOLO 偵測中，等待穩定目標...\n'
+                '🔍  偵測中，等待穩定目標...\n'
                 '（偵測到目標後會自動進入確認階段）')
         else:
             # Fallback stub（YOLO 未就緒或相機未連線）
@@ -654,6 +658,10 @@ class AutoGrasp:
             self._step_start_place_sequence()
         elif p == 'confirm_place_arrived':
             self._step_open_gripper()
+        elif p == 'confirm_grasp_complete':
+            self._start_restore_sequence()
+        elif p == 'confirm_restore_complete':
+            self._on_start()  # 開始下一輪
 
     # ═════════════════════════════════════════════════════════════════════════
     # Phase 1 stub：手動提供目標（無相機）
@@ -1136,15 +1144,8 @@ class AutoGrasp:
         count = self._mem.total_recorded
         if count >= 3:
             self._log('✅ 已完成 3 個器械夾取')
-            if self._auto_mode:
-                self._log(f'⏳ Home 位姿等待 {_HOME_RESTORE_WAIT_S:.0f}s 後開始還原...')
-                def _wait_restore():
-                    time.sleep(_HOME_RESTORE_WAIT_S)
-                    self._start_restore_sequence()
-                threading.Thread(target=_wait_restore, daemon=True).start()
-            else:
-                self._log('開始還原器械...')
-                self._start_restore_sequence()
+            txt = '按「確認繼續」開始還原器械到托盤'
+            self._set_phase('confirm_grasp_complete', txt)
             return
         else:
             self._log(f'已完成 {count}/3，回到偵測繼續下一個')
@@ -1153,7 +1154,7 @@ class AutoGrasp:
             rs_ready   = (self._rs is not None)
             if yolo_ready and rs_ready:
                 self._set_phase('detecting',
-                    '🔍 YOLO 偵測中，等待穩定目標...\n'
+                    '🔍  偵測中，等待穩定目標...\n'
                     '（偵測到目標後會自動進入確認階段）')
                 # tick() 會呼叫 _try_inject_detection() 觸發
             else:
@@ -1190,15 +1191,8 @@ class AutoGrasp:
         if not self._restore_queue:
             self._mem.clear()
             self._mem.reset_counter()
-            if self._auto_mode:
-                self._set_phase('restore_complete',
-                                f'✅ 器械已全數還原，{_HOME_RESTORE_WAIT_S:.0f}s 後自動開始下一輪...')
-                def _auto_restart():
-                    time.sleep(_HOME_RESTORE_WAIT_S)
-                    self._on_start()
-                threading.Thread(target=_auto_restart, daemon=True).start()
-            else:
-                self._set_phase('restore_complete', '✅ 器械已全數還原，可開始下一輪')
+            txt = '按「確認繼續」開始下一輪夾取'
+            self._set_phase('confirm_restore_complete', txt)
             return
 
         action = self._restore_queue.pop(0)
